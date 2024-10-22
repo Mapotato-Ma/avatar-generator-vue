@@ -11,7 +11,6 @@
       </div>
     </div>
     <div class="view">
-      <div class="bg"></div>
       <div :class="[key]" v-for="{ key } in parts" v-html="getPart(key)"></div>
     </div>
     <div class="resources">
@@ -20,12 +19,16 @@
         :class="{ active: selectedParts.get(currentPart) === '' }"
         @click="selectedParts.set(currentPart, '')"
       ></div>
+      <div class="icon" v-if="currentPart === 'bg'">
+        <!-- TODO: 背景选择器 -->
+      </div>
       <div
         class="icon"
         :class="{ active: selectedParts.get(currentPart) === iconName }"
         v-for="[iconName, iconSvg] in Object.entries(currentLibrary)"
         :key="iconName"
         v-html="iconSvg"
+        :title="'>>>>>>>>>>' + iconName"
         @click="selectedParts.set(currentPart, iconName)"
       ></div>
     </div>
@@ -38,14 +41,14 @@ import { iconMap } from './assets/icons';
 const parts = [
   { key: 'face', label: '脸' },
   { key: 'eyes', label: '眼睛' },
-  { key: 'hair', label: '头发' },
   { key: 'decoration', label: '配饰' },
   { key: 'mouth', label: '嘴巴' },
   { key: 'clothes', label: '着装' },
+  { key: 'hair', label: '头发' },
   { key: 'mask', label: '遮罩' },
 ];
 
-const currentPart = ref('hair');
+const currentPart = ref('face');
 
 const currentLibrary = computed(() => {
   return iconMap[currentPart.value] ?? {};
@@ -53,13 +56,12 @@ const currentLibrary = computed(() => {
 
 const selectedParts = ref<Map<string, string | undefined>>(
   new Map([
-    ['bg', undefined],
-    ['decoration', undefined],
-    ['hair', undefined],
-    ['mouth', undefined],
-    ['eyes', undefined],
-    ['clothes', undefined],
-    ['face', undefined],
+    ['decoration', '眼镜'],
+    ['hair', '15'],
+    ['mouth', '露牙齿'],
+    ['eyes', '悲伤'],
+    ['clothes', '时尚夹克'],
+    ['face', '白皙肤色'],
     ['mask', undefined],
   ])
 );
@@ -114,44 +116,39 @@ const switchPart = (part: string) => {
 
 .view {
   position: relative;
-  width: 250px;
+  width: 300px;
   aspect-ratio: 1;
   border-radius: 100%;
   overflow: hidden;
+  background-color: rgba(0, 200, 255, 0.38);
 
   > div {
     position: absolute;
     z-index: 1;
   }
-
-  .bg {
-    position: absolute;
-    inset: 0;
-    background-color: rgba(0, 200, 255, 0.38);
-  }
   .face {
-    top: 140px;
-    left: 120px;
+    top: 56px;
+    left: 43px;
   }
   .hair {
-    top: 100px;
-    left: 130px;
+    top: 36px;
+    left: 26px;
   }
   .eyes {
-    top: 95px;
-    left: 170px;
+    top: 106px;
+    left: 144px;
   }
   .mouth {
-    top: 140px;
-    left: 153px;
+    top: 169px;
+    left: 160px;
   }
   .clothes {
-    top: 242px;
-    left: 138px;
+    top: 187px;
+    left: 14px;
   }
   .decoration {
-    top: 144px;
-    left: 141px;
+    top: 119px;
+    left: 90px;
   }
 }
 
@@ -166,6 +163,10 @@ const switchPart = (part: string) => {
   align-content: flex-start;
   align-items: stretch;
   .icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px;
     cursor: pointer;
     width: 100%;
     aspect-ratio: 1.1;
@@ -186,11 +187,5 @@ const switchPart = (part: string) => {
 .resources svg {
   width: 100%;
   height: 100%;
-}
-
-.view > div:not(.bg) {
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
 }
 </style>
