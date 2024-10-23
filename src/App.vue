@@ -10,7 +10,7 @@
         {{ item.label }}
       </div>
     </div>
-    <div class="view">
+    <div class="view" :style="{ backgroundColor: bgColor }">
       <div :class="[key]" v-for="{ key } in parts" v-html="getPart(key)"></div>
     </div>
     <div class="resources">
@@ -19,8 +19,18 @@
         :class="{ active: selectedParts.get(currentPart) === '' }"
         @click="selectedParts.set(currentPart, '')"
       ></div>
-      <div class="icon" v-if="currentPart === 'bg'">
-        <!-- TODO: 背景选择器 -->
+      <div class="icon" :style="{ backgroundColor: bgColor }" v-if="currentPart === 'bg'">
+        <input type="color" name="bg" id="bg" v-model="bgColor" />
+      </div>
+      <div class="icons" :style="{ backgroundColor: bgColor }" v-if="currentPart === 'bg'">
+        <div
+          class="icon"
+          :class="{ active: bgColor === color }"
+          v-for="color in BG_COLORS"
+          :key="color"
+          :style="{ backgroundColor: color }"
+          @click="bgColor = color"
+        ></div>
       </div>
       <div
         class="icon"
@@ -37,6 +47,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { iconMap } from './assets/icons';
+import { BG_COLORS } from './common/const';
 
 const parts = [
   { key: 'face', label: '脸' },
@@ -53,6 +64,8 @@ const currentPart = ref('face');
 const currentLibrary = computed(() => {
   return iconMap[currentPart.value] ?? {};
 });
+
+const bgColor = ref('#fff');
 
 const selectedParts = ref<Map<string, string | undefined>>(
   new Map([
@@ -83,11 +96,11 @@ const switchPart = (part: string) => {
   min-width: 500px;
   height: 30rem;
   border: 25px solid #ffc400;
-  background-color: #7d8c8cbd;
   display: grid;
   align-items: center;
   grid-template-columns: fit-content(300px) 1fr fit-content(300px);
   gap: 2em;
+  background: #636363;
 }
 
 .slide {
@@ -119,8 +132,8 @@ const switchPart = (part: string) => {
   width: 300px;
   aspect-ratio: 1;
   border-radius: 100%;
+  outline: 3px dashed rgba(255, 196, 0, 0.5);
   overflow: hidden;
-  background-color: rgba(0, 200, 255, 0.38);
 
   > div {
     position: absolute;
@@ -173,6 +186,12 @@ const switchPart = (part: string) => {
     border-radius: 1rem;
     border: 2.5px solid #ffc400;
     transition: background-color 0.2s;
+    &:has(input) {
+      padding: 0;
+    }
+    input {
+      opacity: 0;
+    }
     &:hover {
       background-color: #ffc400a9;
     }
