@@ -18,11 +18,12 @@
         class="icon"
         :class="{ active: selectedParts.get(currentPart) === '' }"
         @click="selectedParts.set(currentPart, '')"
+        v-if="currentPart !== 'bg'"
       ></div>
-      <div class="icon" :style="{ backgroundColor: bgColor }" v-if="currentPart === 'bg'">
+      <div class="icon icon-bg-select" :style="{ backgroundColor: bgColor }" v-if="currentPart === 'bg'">
         <input type="color" name="bg" id="bg" v-model="bgColor" />
       </div>
-      <div class="icons" :style="{ backgroundColor: bgColor }" v-if="currentPart === 'bg'">
+      <div class="icons" v-if="currentPart === 'bg'">
         <div
           class="icon"
           :class="{ active: bgColor === color }"
@@ -38,7 +39,6 @@
         v-for="[iconName, iconSvg] in Object.entries(currentLibrary)"
         :key="iconName"
         v-html="iconSvg"
-        :title="'>>>>>>>>>>' + iconName"
         @click="selectedParts.set(currentPart, iconName)"
       ></div>
     </div>
@@ -140,27 +140,27 @@ const switchPart = (part: string) => {
     z-index: 1;
   }
   .face {
-    top: 56px;
+    top: 58px;
     left: 43px;
   }
   .hair {
-    top: 36px;
+    top: 38px;
     left: 26px;
   }
   .eyes {
-    top: 106px;
+    top: 108px;
     left: 144px;
   }
   .mouth {
-    top: 169px;
+    top: 171px;
     left: 160px;
   }
   .clothes {
-    top: 187px;
+    top: 189px;
     left: 14px;
   }
   .decoration {
-    top: 119px;
+    top: 121px;
     left: 90px;
   }
 }
@@ -186,6 +186,12 @@ const switchPart = (part: string) => {
     border-radius: 1rem;
     border: 2.5px solid #ffc400;
     transition: background-color 0.2s;
+    &.icon-bg-select {
+      cursor: pointer;
+      grid-column: span 2;
+      aspect-ratio: 2;
+      border-radius: 0.2rem;
+    }
     &:has(input) {
       padding: 0;
     }
@@ -197,6 +203,18 @@ const switchPart = (part: string) => {
     }
     &.active {
       background-color: #ff8800;
+    }
+  }
+  .icons {
+    grid-column: span 2;
+    display: grid;
+    gap: 0.3rem;
+    flex: auto;
+    overflow: auto;
+    grid-template-columns: repeat(2, 1fr);
+    .icon {
+      aspect-ratio: 2;
+      border-radius: 0.2rem;
     }
   }
 }

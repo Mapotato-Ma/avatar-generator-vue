@@ -1,4 +1,5 @@
 export const BG_COLORS = [
+  'transparent',
   '#d4eaf7',
   '#b6ccd8',
   '#3b3c3d',
