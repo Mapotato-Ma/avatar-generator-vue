@@ -10,8 +10,15 @@
         {{ item.label }}
       </div>
     </div>
-    <div class="view" :style="{ backgroundColor: bgColor }">
-      <div :class="[key]" v-for="{ key } in parts" v-html="getPart(key)"></div>
+    <div class="view" id="view" :style="{ backgroundColor: bgColor }">
+      <div
+        :class="[key]"
+        v-for="{ key, position: { x, y } } in parts"
+        :id="key"
+        v-html="getPart(key)"
+        :style="{ left: `${x}px`, top: `${y}px` }"
+      ></div>
+      <canvas ref="canvas" width="300" height="300"></canvas>
     </div>
     <div class="resources">
       <div
@@ -42,31 +49,28 @@
         @click="selectedParts.set(currentPart, iconName)"
       ></div>
     </div>
+    <div class="btn" @click="exportAvatarWithPng"></div>
   </div>
 </template>
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 import { iconMap } from './assets/icons';
 import { BG_COLORS } from './common/const';
+const canvasEl = useTemplateRef('canvas');
+const currentPart = ref('face');
+const bgColor = ref('#fff');
 
 const parts = [
-  { key: 'face', label: '脸' },
-  { key: 'eyes', label: '眼睛' },
-  { key: 'decoration', label: '配饰' },
-  { key: 'mouth', label: '嘴巴' },
-  { key: 'clothes', label: '着装' },
-  { key: 'hair', label: '头发' },
-  { key: 'mask', label: '遮罩' },
+  { key: 'face', label: '脸', position: { x: 43, y: 60 } },
+  { key: 'eyes', label: '眼睛', position: { x: 144, y: 110 } },
+  { key: 'mouth', label: '嘴巴', position: { x: 160, y: 173 } },
+  { key: 'clothes', label: '着装', position: { x: 14, y: 191 } },
+  { key: 'decoration', label: '配饰', position: { x: 90, y: 123 } },
+  { key: 'hair', label: '头发', position: { x: 26, y: 40 } },
 ];
-
-const currentPart = ref('face');
-
 const currentLibrary = computed(() => {
   return iconMap[currentPart.value] ?? {};
 });
-
-const bgColor = ref('#fff');
-
 const selectedParts = ref<Map<string, string | undefined>>(
   new Map([
     ['decoration', '眼镜'],
@@ -78,29 +82,79 @@ const selectedParts = ref<Map<string, string | undefined>>(
     ['mask', undefined],
   ])
 );
-
-const getPart = (part: string) => {
-  return iconMap[part]?.[selectedParts.value.get(part) ?? ''] ?? '';
+const getPart = (part: string) => iconMap[part]?.[selectedParts.value.get(part) ?? ''] ?? '';
+const switchPart = (part: string) => (currentPart.value = part);
+const exportAvatarWithPng = async () => {
+  const draw = canvasEl.value?.getContext('2d')!;
+  draw.fillStyle = bgColor.value;
+  draw.fillRect(0, 0, 300, 300);
+  const svgElements = Array.from(document.querySelector('#view')?.querySelectorAll('svg')!);
+  const promises: Promise<void>[] = [];
+  svgElements.forEach((svgElement, index) => {
+    const { x, y } = parts[index].position;
+    const svgString = new XMLSerializer().serializeToString(svgElement);
+    const img = new Image();
+    promises.push(
+      new Promise<void>((resolve) => {
+        img.onload = function () {
+          draw.drawImage(img, x, y);
+          resolve();
+        };
+      })
+    );
+    img.src = 'data:image/svg+xml,' + encodeURIComponent(svgString);
+  });
+  await Promise.allSettled(promises);
+  download(canvasEl.value?.toDataURL('image/png')!);
+  draw.clearRect(0, 0, 300, 300);
 };
-
-const switchPart = (part: string) => {
-  currentPart.value = part;
+const download = (url: string) => {
+  const downloadLink = document.createElement('a');
+  downloadLink.href = url;
+  downloadLink.download = 'avatar.png';
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+  document.body.removeChild(downloadLink);
 };
 </script>
 
 <style scoped>
 .home {
+  position: relative;
   padding: 2rem;
   border-radius: 2rem;
   max-width: 800px;
   min-width: 500px;
-  height: 30rem;
-  border: 25px solid #ffc400;
+  height: 26rem;
+  outline: 100px solid #ffc400;
   display: grid;
   align-items: center;
   grid-template-columns: fit-content(300px) 1fr fit-content(300px);
   gap: 2em;
   background: #636363;
+  .btn {
+    cursor: pointer;
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    width: 90px;
+    transform: translate(-50%, 100%);
+    aspect-ratio: 1;
+    background: aliceblue;
+    border-radius: 100%;
+    background: linear-gradient(45deg, #825dfd, #2f2f2f);
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 30px;
+      background: #ffc400b8;
+      border-radius: 3px;
+      transition: box-shadow 0.2s;
+    }
+    &:active::after {
+      box-shadow: 0 0 20px 1px #f9e298;
+    }
+  }
 }
 
 .slide {
@@ -132,36 +186,15 @@ const switchPart = (part: string) => {
   width: 300px;
   aspect-ratio: 1;
   border-radius: 100%;
-  outline: 3px dashed rgba(255, 196, 0, 0.5);
+  border: 3px solid rgba(255, 196, 0, 0.7);
   overflow: hidden;
+  canvas {
+    display: none;
+  }
 
   > div {
     position: absolute;
     z-index: 1;
-  }
-  .face {
-    top: 58px;
-    left: 43px;
-  }
-  .hair {
-    top: 38px;
-    left: 26px;
-  }
-  .eyes {
-    top: 108px;
-    left: 144px;
-  }
-  .mouth {
-    top: 171px;
-    left: 160px;
-  }
-  .clothes {
-    top: 189px;
-    left: 14px;
-  }
-  .decoration {
-    top: 121px;
-    left: 90px;
   }
 }
 
@@ -189,7 +222,7 @@ const switchPart = (part: string) => {
     &.icon-bg-select {
       cursor: pointer;
       grid-column: span 2;
-      aspect-ratio: 2;
+      aspect-ratio: 3;
       border-radius: 0.2rem;
     }
     &:has(input) {
