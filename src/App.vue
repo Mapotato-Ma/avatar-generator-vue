@@ -58,7 +58,7 @@ import { iconMap } from './assets/icons';
 import { BG_COLORS } from './common/const';
 const canvasEl = useTemplateRef('canvas');
 const currentPart = ref('face');
-const bgColor = ref('#fff');
+const bgColor = ref('#FF7F50');
 
 const parts = [
   { key: 'face', label: '脸', position: { x: 43, y: 60 } },
@@ -88,22 +88,24 @@ const exportAvatarWithPng = async () => {
   const draw = canvasEl.value?.getContext('2d')!;
   draw.fillStyle = bgColor.value;
   draw.fillRect(0, 0, 300, 300);
-  const svgElements = Array.from(document.querySelector('#view')?.querySelectorAll('svg')!);
+  const svgElements = document.querySelector('#view')?.querySelectorAll('svg') ?? [];
   const promises: Promise<void>[] = [];
-  svgElements.forEach((svgElement, index) => {
-    const { x, y } = parts[index].position;
+  for (const svgElement of svgElements) {
+    const [top, left] = [svgElement.parentElement!.style.top, svgElement.parentElement!.style.left].map((v) =>
+      parseInt(v)
+    );
     const svgString = new XMLSerializer().serializeToString(svgElement);
     const img = new Image();
     promises.push(
       new Promise<void>((resolve) => {
         img.onload = function () {
-          draw.drawImage(img, x, y);
+          draw.drawImage(img, left, top);
           resolve();
         };
       })
     );
     img.src = 'data:image/svg+xml,' + encodeURIComponent(svgString);
-  });
+  }
   await Promise.allSettled(promises);
   download(canvasEl.value?.toDataURL('image/png')!);
   draw.clearRect(0, 0, 300, 300);
