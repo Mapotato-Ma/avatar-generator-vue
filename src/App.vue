@@ -18,9 +18,21 @@
         v-html="getPart(key)"
         :style="{ left: `${x}px`, top: `${y}px` }"
       ></div>
+      <video ref="selfie" width="300" height="300"></video>
+      <img
+        v-if="selectedParts.get('face')?.includes('data:image/png;base64')"
+        :src="selectedParts.get('face')"
+        width="300"
+        height="300"
+      />
       <canvas ref="canvas" width="300" height="300"></canvas>
     </div>
     <div class="resources">
+      <div class="icon icon-camera" v-show="currentPart === 'face'">
+        <i class="icon-play" @click="recording">▶</i>
+        <i class="icon-shot" @click="screenshot">✂</i>
+        <i class="icon-stop" @click="stopRecording"></i>
+      </div>
       <div
         class="icon"
         :class="{ active: selectedParts.get(currentPart) === '' }"
@@ -30,16 +42,15 @@
       <div class="icon icon-bg-select" :style="{ backgroundColor: bgColor }" v-if="currentPart === 'bg'">
         <input type="color" name="bg" id="bg" v-model="bgColor" />
       </div>
-      <div class="icons" v-if="currentPart === 'bg'">
-        <div
-          class="icon"
-          :class="{ active: bgColor === color }"
-          v-for="color in BG_COLORS"
-          :key="color"
-          :style="{ backgroundColor: color }"
-          @click="bgColor = color"
-        ></div>
-      </div>
+      <div
+        class="icon icon-bg"
+        :class="{ active: bgColor === color }"
+        v-for="color in BG_COLORS"
+        :key="color"
+        :style="{ backgroundColor: color }"
+        @click="bgColor = color"
+        v-show="currentPart === 'bg'"
+      ></div>
       <div
         class="icon"
         :class="{ active: selectedParts.get(currentPart) === iconName }"
@@ -48,17 +59,36 @@
         v-html="iconSvg"
         @click="selectedParts.set(currentPart, iconName)"
       ></div>
+      <div
+        class="icon"
+        :class="{ active: selectedParts.get(currentPart) === png }"
+        v-for="png in storage"
+        v-show="currentPart === 'face'"
+        @click="selectedParts.set('face', png)"
+      >
+        <img :src="png" alt="" srcset="" />
+      </div>
     </div>
     <div class="btn" @click="exportAvatarWithPng"></div>
   </div>
 </template>
 <script setup lang="ts">
-import { computed, ref, useTemplateRef } from 'vue';
+import { computed, onMounted, ref, useTemplateRef } from 'vue';
 import { iconMap } from './assets/icons';
 import { BG_COLORS } from './common/const';
+import { useStorage } from '@vueuse/core';
+import { Screenshot } from './common/screenshot.service';
 const canvasEl = useTemplateRef('canvas');
+const selfieEl = useTemplateRef('selfie');
 const currentPart = ref('face');
 const bgColor = ref('#FF7F50');
+const playing = ref(false);
+const storage = useStorage<string[]>('shots', []);
+const screenShotInstance = ref<Screenshot>();
+
+onMounted(() => {
+  screenShotInstance.value = new Screenshot(selfieEl.value!);
+});
 
 const parts = [
   { key: 'face', label: '脸', position: { x: 43, y: 60 } },
@@ -85,9 +115,16 @@ const selectedParts = ref<Map<string, string | undefined>>(
 const getPart = (part: string) => iconMap[part]?.[selectedParts.value.get(part) ?? ''] ?? '';
 const switchPart = (part: string) => (currentPart.value = part);
 const exportAvatarWithPng = async () => {
+  // 背景
   const draw = canvasEl.value?.getContext('2d')!;
   draw.fillStyle = bgColor.value;
   draw.fillRect(0, 0, 300, 300);
+  // 自拍
+  const selfie = document.querySelector('#view')?.getElementsByTagName('img')[0];
+  if (selfie) {
+    draw.drawImage(selfie, 0, 0, 300, 300);
+  }
+  // 配件
   const svgElements = document.querySelector('#view')?.querySelectorAll('svg') ?? [];
   const promises: Promise<void>[] = [];
   for (const svgElement of svgElements) {
@@ -118,6 +155,36 @@ const download = (url: string) => {
   downloadLink.click();
   document.body.removeChild(downloadLink);
 };
+
+const recording = () => {
+  if (playing.value) {
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({ video: { width: 300, height: 300 }, audio: false }).then(
+    (stream) => {
+      selfieEl.value!.srcObject = stream;
+      selfieEl.value?.play();
+      playing.value = true;
+    },
+    () => {
+      alert('无法获取您的美照');
+    }
+  );
+};
+
+const stopRecording = () => {
+  selfieEl.value?.pause();
+  selfieEl.value!.srcObject = null;
+  playing.value = false;
+};
+
+const screenshot = () => {
+  if (!playing.value) {
+    return;
+  }
+  const png = screenShotInstance.value?.computeFrame(selfieEl.value!);
+  storage.value.unshift(png!);
+};
 </script>
 
 <style scoped>
@@ -134,6 +201,7 @@ const download = (url: string) => {
   grid-template-columns: fit-content(300px) 1fr fit-content(300px);
   gap: 2em;
   background: #636363;
+  min-width: max-content;
   .btn {
     cursor: pointer;
     position: absolute;
@@ -193,6 +261,12 @@ const download = (url: string) => {
   canvas {
     display: none;
   }
+  video,
+  img {
+    position: absolute;
+    left: 0;
+    object-fit: cover;
+  }
 
   > div {
     position: absolute;
@@ -204,12 +278,14 @@ const download = (url: string) => {
   height: 100%;
   border-radius: 1rem;
   overflow: auto;
-  padding: 1rem;
+  border: 1rem solid transparent;
   display: grid;
   gap: 0.5rem;
   grid-template-columns: repeat(2, 3rem);
+  grid-auto-rows: minmax(3rem, auto);
   align-content: flex-start;
   align-items: stretch;
+  overflow: auto;
   .icon {
     display: flex;
     align-items: center;
@@ -221,10 +297,16 @@ const download = (url: string) => {
     border-radius: 1rem;
     border: 2.5px solid #ffc400;
     transition: background-color 0.2s;
+    overflow: hidden;
     &.icon-bg-select {
+      position: sticky;
+      top: 0;
       cursor: pointer;
       grid-column: span 2;
       aspect-ratio: 3;
+      border-radius: 0.2rem;
+    }
+    &.icon-bg {
       border-radius: 0.2rem;
     }
     &:has(input) {
@@ -238,6 +320,44 @@ const download = (url: string) => {
     }
     &.active {
       background-color: #ff8800;
+    }
+    &:has(img) {
+      padding: 0;
+    }
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    &.icon-camera {
+      position: sticky;
+      top: 0;
+      width: 100%;
+      aspect-ratio: 3;
+      display: flex;
+      gap: 0.5em;
+      grid-column: span 2;
+      justify-content: space-between;
+      border: none;
+      backdrop-filter: blur(28px);
+      &:hover {
+        background-color: transparent;
+      }
+      i {
+        width: 2rem;
+        aspect-ratio: 1;
+        border-radius: 0.2em;
+        background-color: #ff8800;
+        display: grid;
+        place-content: center;
+        &.icon-stop {
+          background-color: #fff;
+          border: 7px solid #ff8800;
+        }
+        &:hover {
+          opacity: 0.6;
+        }
+      }
     }
   }
   .icons {
