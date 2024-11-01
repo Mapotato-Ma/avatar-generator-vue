@@ -25,3 +25,4 @@ package-lock.json
 tsconfig.app.tsbuildinfo
 tsconfig.node.tsbuildinfo
 avatar-generator
+/qodana.yaml
