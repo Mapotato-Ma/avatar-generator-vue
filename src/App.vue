@@ -202,6 +202,7 @@ const screenshot = () => {
   gap: 2em;
   background: #636363;
   min-width: max-content;
+  box-shadow: 0 0 170px 145px #4a7bd0;
 
   .btn {
     cursor: pointer;
